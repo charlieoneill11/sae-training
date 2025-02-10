@@ -942,18 +942,16 @@ class JumpReluTrainer(nn.Module, SAETrainer):
             "wandb_name": self.wandb_name,
         }
 
-# --- Example Usage ---
-
 if __name__ == "__main__":
     # Automatically select between CUDA and CPU.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Load the activations.
-    # (Assumes a file 'activations.pt' containing a tensor of shape [10000, 128, 2304])
+    # activations will be a tensor of shape [10000, 128, 2304])
     try:
         # Load your data from Hugging Face
-        repo_id = "charlieoneill/gemma-medicine-sae"  # Replace with your repo
+        repo_id = "charlieoneill/gemma-medicine-sae"
 
         # Download the activation tensor and dataset
         api = HfApi()
@@ -966,7 +964,7 @@ if __name__ == "__main__":
     
     
     # Example settings: optimize on random activations of shape (batch, seq_len, d_model)
-    batch_size = 8
+    batch_size = 1024
     total_steps = 100_000
 
     d_model = activations.shape[-1]  # e.g. 2304
