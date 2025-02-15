@@ -145,14 +145,97 @@ def run_sae_training(
             autocast_dtype=t.bfloat16,
         )
 
-# def push_to_huggingface(save_dir: str, repo_id: str):
-#     api = huggingface_hub.HfApi()
-#     api.upload_folder(
-#         folder_path=save_dir,
-#         repo_id=repo_id,
-#         repo_type="model",
-#         path_in_repo=save_dir,
-#     )
+@t.no_grad()
+def eval_saes(
+    model_name: str,
+    ae_paths: list[str],
+    n_inputs: int,
+    device: str,
+    overwrite_prev_results: bool = False,
+    transcoder: bool = False,
+) -> dict:
+    random.seed(demo_config.random_seeds[0])
+    t.manual_seed(demo_config.random_seeds[0])
+
+    if transcoder:
+        io = "in_and_out"
+    else:
+        io = "out"
+
+    context_length = demo_config.LLM_CONFIG[model_name].context_length
+    llm_batch_size = demo_config.LLM_CONFIG[model_name].llm_batch_size
+    loss_recovered_batch_size = max(llm_batch_size // 5, 1)
+    sae_batch_size = loss_recovered_batch_size * context_length
+    dtype = demo_config.LLM_CONFIG[model_name].dtype
+
+    model = LanguageModel(model_name, dispatch=True, device_map=device)
+    model = model.to(dtype=dtype)
+
+    buffer_size = n_inputs
+    io = "out"
+    n_batches = n_inputs // loss_recovered_batch_size
+
+    generator = hf_dataset_to_generator("monology/pile-uncopyrighted")
+
+    input_strings = []
+    for i, example in enumerate(generator):
+        input_strings.append(example)
+        if i > n_inputs * 5:
+            break
+
+    eval_results = {}
+
+    for ae_path in ae_paths:
+        output_filename = f"{ae_path}/eval_results.json"
+        if not overwrite_prev_results:
+            if os.path.exists(output_filename):
+                print(f"Skipping {ae_path} as eval results already exist")
+                continue
+
+        dictionary, config = utils.load_dictionary(ae_path, device)
+        dictionary = dictionary.to(dtype=model.dtype)
+
+        layer = config["trainer"]["layer"]
+        submodule = utils.get_submodule(model, layer)
+
+        activation_dim = config["trainer"]["activation_dim"]
+
+        activation_buffer = ActivationBuffer(
+            iter(input_strings),
+            model,
+            submodule,
+            n_ctxs=buffer_size,
+            ctx_len=context_length,
+            refresh_batch_size=llm_batch_size,
+            out_batch_size=sae_batch_size,
+            io=io,
+            d_submodule=activation_dim,
+            device=device,
+        )
+
+        eval_results = evaluate(
+            dictionary,
+            activation_buffer,
+            context_length,
+            loss_recovered_batch_size,
+            io=io,
+            device=device,
+            n_batches=n_batches,
+        )
+
+        hyperparameters = {
+            "n_inputs": n_inputs,
+            "context_length": context_length,
+        }
+        eval_results["hyperparameters"] = hyperparameters
+
+        print(eval_results)
+
+        with open(output_filename, "w") as f:
+            json.dump(eval_results, f)
+
+    # return the final eval_results for testing purposes
+    return eval_results
 
 def push_to_huggingface(save_dir: str, repo_id: str):
     api = huggingface_hub.HfApi()
