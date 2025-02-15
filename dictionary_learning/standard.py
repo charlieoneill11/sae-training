@@ -5,10 +5,9 @@ import torch as t
 from typing import Optional
 
 from trainer import SAETrainer, get_lr_schedule, get_sparsity_warmup_fn, ConstrainedAdam
+DEBUG=False
 from dictionary import AutoEncoder
 from collections import namedtuple
-
-DEBUG = False
 
 class StandardTrainer(SAETrainer):
     """
@@ -287,3 +286,4 @@ class StandardTrainerAprilUpdate(SAETrainer):
             'wandb_name': self.wandb_name,
             'submodule_name': self.submodule_name,
         }
+

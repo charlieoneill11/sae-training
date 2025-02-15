@@ -3,6 +3,8 @@ from nnsight import LanguageModel
 import gc
 from tqdm import tqdm
 
+# from .config import DEBUG
+
 DEBUG = False
 
 if DEBUG:

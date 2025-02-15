@@ -151,15 +151,12 @@ class JumpReluTrainer(nn.Module, SAETrainer):
 
         sparsity_scale = self.sparsity_warmup_fn(step)
         x = x.to(self.ae.W_enc.dtype)
-        #print(f"x shape: {x.shape}")
 
         pre_jump = x @ self.ae.W_enc + self.ae.b_enc
         f = JumpReLUFunction.apply(pre_jump, self.ae.threshold, self.bandwidth)
 
         active_indices = f.sum(0) > 0
-        #print(f"active_indices shape: {active_indices.shape}")  
         did_fire = torch.zeros_like(self.num_tokens_since_fired, dtype=torch.bool)
-        #print(f"did_fire shape: {did_fire.shape}")  
         did_fire[active_indices] = True
         self.num_tokens_since_fired += x.size(0)
         self.num_tokens_since_fired[active_indices] = 0

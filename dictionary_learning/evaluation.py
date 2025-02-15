@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from buffer import ActivationBuffer, NNsightActivationBuffer
 from nnsight import LanguageModel
+# from .config import DEBUG
 
 DEBUG = False
 

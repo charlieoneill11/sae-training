@@ -31,105 +31,54 @@ def new_wandb_process(config, log_queue, entity, project):
             continue
     wandb.finish()
 
+
 def log_stats(
     trainers,
     step: int,
     act: t.Tensor,
     activations_split_by_head: bool,
     transcoder: bool,
-    log_queues: list = [],
-    verbose: bool = False,
+    log_queues: list=[],
+    verbose: bool=False,
 ):
     with t.no_grad():
-        # Ensure all trainers get the same input
+        # quick hack to make sure all trainers get the same x
         z = act.clone()
         for i, trainer in enumerate(trainers):
             log = {}
-            act_ = z.clone()
-            if activations_split_by_head:  # e.g. if activations are [batch, pos, n_heads, d_head]
-                act_ = act_[..., i, :]
+            act = z.clone()
+            if activations_split_by_head:  # x.shape: [batch, pos, n_heads, d_head]
+                act = act[..., i, :]
             if not transcoder:
-                act_, act_hat, f, losslog = trainer.loss(act_, step=step, logging=True)
+                act, act_hat, f, losslog = trainer.loss(act, step=step, logging=True)
+
+                # L0
                 l0 = (f != 0).float().sum(dim=-1).mean().item()
-                # Compute fraction of variance explained:
-                total_variance = t.var(act_, dim=0).sum()
-                residual_variance = t.var(act_ - act_hat, dim=0).sum()
+                # fraction of variance explained
+                total_variance = t.var(act, dim=0).sum()
+                residual_variance = t.var(act - act_hat, dim=0).sum()
                 frac_variance_explained = 1 - residual_variance / total_variance
-                log["frac_variance_explained"] = frac_variance_explained.item()
-            else:
-                x, x_hat, f, losslog = trainer.loss(act_, step=step, logging=True)
+                log[f"frac_variance_explained"] = frac_variance_explained.item()
+            else:  # transcoder
+                x, x_hat, f, losslog = trainer.loss(act, step=step, logging=True)
+
+                # L0
                 l0 = (f != 0).float().sum(dim=-1).mean().item()
-            
-            # Add loss values and other parameters into the log dictionary.
-            log.update({k: v.cpu().item() if isinstance(v, t.Tensor) else v for k, v in losslog.items()})
-            log["l0"] = l0
+
+            if verbose:
+                print(f"Step {step}: L0 = {l0}, frac_variance_explained = {frac_variance_explained}")
+
+            # log parameters from training
+            log.update({f"{k}": v.cpu().item() if isinstance(v, t.Tensor) else v for k, v in losslog.items()})
+            log[f"l0"] = l0
             trainer_log = trainer.get_logging_parameters()
             for name, value in trainer_log.items():
                 if isinstance(value, t.Tensor):
                     value = value.cpu().item()
-                log[name] = value
+                log[f"{name}"] = value
 
-            # If log queues are provided, send the log there.
             if log_queues:
                 log_queues[i].put(log)
-            else:
-                # Otherwise, if verbose, print a nicely formatted log.
-                if verbose:
-                    # Sort the log entries for consistency
-                    log_items = sorted(log.items())
-                    # Format each key-value pair (floats with 4 decimal places)
-                    formatted = ", ".join(
-                        [f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in log_items]
-                    )
-                    print(f"Step {step:06d} | {formatted}")
-
-# def log_stats(
-#     trainers,
-#     step: int,
-#     act: t.Tensor,
-#     activations_split_by_head: bool,
-#     transcoder: bool,
-#     log_queues: list=[],
-#     verbose: bool=False,
-# ):
-#     with t.no_grad():
-#         # quick hack to make sure all trainers get the same x
-#         z = act.clone()
-#         for i, trainer in enumerate(trainers):
-#             log = {}
-#             act = z.clone()
-#             if activations_split_by_head:  # x.shape: [batch, pos, n_heads, d_head]
-#                 act = act[..., i, :]
-#             if not transcoder:
-#                 act, act_hat, f, losslog = trainer.loss(act, step=step, logging=True)
-
-#                 # L0
-#                 l0 = (f != 0).float().sum(dim=-1).mean().item()
-#                 # fraction of variance explained
-#                 total_variance = t.var(act, dim=0).sum()
-#                 residual_variance = t.var(act - act_hat, dim=0).sum()
-#                 frac_variance_explained = 1 - residual_variance / total_variance
-#                 log[f"frac_variance_explained"] = frac_variance_explained.item()
-#             else:  # transcoder
-#                 x, x_hat, f, losslog = trainer.loss(act, step=step, logging=True)
-
-#                 # L0
-#                 l0 = (f != 0).float().sum(dim=-1).mean().item()
-
-#             if verbose:
-#                 print(f"Step {step}: L0 = {l0}, frac_variance_explained = {frac_variance_explained}")
-
-#             # log parameters from training
-#             log.update({f"{k}": v.cpu().item() if isinstance(v, t.Tensor) else v for k, v in losslog.items()})
-#             log[f"l0"] = l0
-#             trainer_log = trainer.get_logging_parameters()
-#             for name, value in trainer_log.items():
-#                 if isinstance(value, t.Tensor):
-#                     value = value.cpu().item()
-#                 log[f"{name}"] = value
-
-#             if log_queues:
-#                 log_queues[i].put(log)
 
 def get_norm_factor(data, steps: int) -> float:
     """Per Section 3.1, find a fixed scalar factor so activation vectors have unit mean squared norm.
