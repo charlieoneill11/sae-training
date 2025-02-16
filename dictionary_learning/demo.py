@@ -1,6 +1,7 @@
 import torch as t
 from nnsight import LanguageModel
 import itertools
+from itertools import cycle
 import os
 import random
 import json
@@ -175,7 +176,7 @@ def eval_saes(
     io = "out"
     n_batches = n_inputs // loss_recovered_batch_size
 
-    generator = hf_dataset_to_generator("monology/pile-uncopyrighted")
+    generator = hf_dataset_to_generator("charlieoneill/medical-qa-combined") #"monology/pile-uncopyrighted")
 
     input_strings = []
     for i, example in enumerate(generator):
@@ -201,7 +202,8 @@ def eval_saes(
         activation_dim = config["trainer"]["activation_dim"]
 
         activation_buffer = ActivationBuffer(
-            iter(input_strings),
+            #iter(input_strings),
+            cycle(input_strings),
             model,
             submodule,
             n_ctxs=buffer_size,
@@ -299,4 +301,4 @@ def run_training():
     if hf_repo_id:
         push_to_huggingface(save_dir, hf_repo_id)
 
-run_training()
+# run_training()

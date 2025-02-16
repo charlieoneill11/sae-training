@@ -364,6 +364,52 @@ class JumpReluAutoEncoder(Dictionary, nn.Module):
         if device is not None:
             device = autoencoder.W_enc.device
         return autoencoder.to(dtype=dtype, device=device)
+    
+    @classmethod
+    def from_npz(cls, hf_repo_id: str, layer: int, width: str, l0: int,
+                dtype: t.dtype = t.float32, device: t.device = None):
+        """
+        Loads a gemma‑scope SAE directly from an npz file stored on HF.
+        This bypasses the usual __init__ normalization.
+        """
+        from huggingface_hub import hf_hub_download
+        import numpy as np
+
+        # Construct the file path (e.g., "layer_20/width_16k/average_l0_139/params.npz")
+        filename = f"average_l0_{l0}/params.npz"
+        hf_path = f"layer_{layer}/width_{width}/{filename}"
+        
+        # Download the file.
+        params_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_path, force_download=False)
+        print(f"Downloading params for L0={l0} from {hf_path}")
+        
+        # Load the parameters.
+        params = np.load(params_path)
+        state_dict = {k: t.from_numpy(v) for k, v in params.items()}
+        
+        # Print stats for debugging.
+        for key, tensor in state_dict.items():
+            print(f"{key}: shape={tensor.shape}, min={tensor.min()}, max={tensor.max()}, nan={t.isnan(tensor).any()}")
+        
+        # Determine activation_dim and dict_size from W_enc.
+        activation_dim, dict_size = state_dict["W_enc"].shape
+        
+        # Create a new instance without calling __init__, then call Module.__init__
+        self = cls.__new__(cls)
+        t.nn.Module.__init__(self)  # <-- This call is required!
+        
+        self.activation_dim = activation_dim
+        self.dict_size = dict_size
+        self.apply_b_dec_to_input = False
+
+        # Directly set the parameters.
+        self.W_enc = t.nn.Parameter(state_dict["W_enc"].to(device).to(dtype))
+        self.b_enc = t.nn.Parameter(state_dict["b_enc"].to(device).to(dtype))
+        self.W_dec = t.nn.Parameter(state_dict["W_dec"].to(device).to(dtype))
+        self.b_dec = t.nn.Parameter(state_dict["b_dec"].to(device).to(dtype))
+        self.threshold = t.nn.Parameter(state_dict["threshold"].to(device).to(dtype))
+        
+        return self
 
 
 # TODO merge this with AutoEncoder
