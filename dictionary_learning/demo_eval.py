@@ -47,7 +47,7 @@
 #             n_inputs=n_inputs,
 #             device=device,
 #             overwrite_prev_results=overwrite_prev_results,
-#             transcoder=False  # Set to True if you need to evaluate both input and output activations.
+#             transcoder=False,  # Set to True if you need to evaluate both input and output activations.
 #         )
 #         combined_results[trainer_name] = eval_result
 #         print(f"Results for {trainer_name}: {eval_result}\n")
@@ -57,9 +57,13 @@
 #     _, config = utils.load_dictionary(trainer_folders[0], device)
 #     layer = config["trainer"]["layer"]
 #     width = config["trainer"]["activation_dim"]
+    
+#     # Round width to nearest 1000 and convert to k format
+#     width_rounded = round(width/1000)*1000
+#     width_k = f"{width_rounded//1000}k"
 
 #     # Create an output filename that reflects the evaluation settings.
-#     output_filename = f"eval_results_layer{layer}_width{width}_ninputs{n_inputs}.json"
+#     output_filename = f"eval_results_layer{layer}_width{width_k}_ninputs{n_inputs}.json"
 #     with open(output_filename, "w") as f:
 #         json.dump(combined_results, f, indent=2)
 #     print(f"Combined evaluation results saved to {output_filename}")
