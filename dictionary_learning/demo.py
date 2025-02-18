@@ -301,4 +301,5 @@ def run_training():
     if hf_repo_id:
         push_to_huggingface(save_dir, hf_repo_id)
 
-# run_training()
+if __name__ == "__main__":
+    run_training()

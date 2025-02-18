@@ -1,0 +1,107 @@
+{
+    "l0_114": {
+      "l2_loss": 65.14174501419068,
+      "l1_loss": 326.4906903076172,
+      "l0": 19.7434326171875,
+      "frac_variance_explained": -1.1298050680756568,
+      "cossim": 0.44833588257431983,
+      "l2_ratio": 1.458713674545288,
+      "relative_reconstruction_bias": 3.926573168039322,
+      "loss_original": 2.151599160730839,
+      "loss_reconstructed": 12.79894030570984,
+      "loss_zero": 12.452933530807496,
+      "frac_recovered": -0.03705257594643627,
+      "frac_alive": 0.1755828857421875,
+      "hyperparameters": {
+        "n_inputs": 200,
+        "context_length": 1024,
+        "l0": 114,
+        "layer": 20,
+        "width": "65k"
+      }
+    },
+    "l0_20": {
+      "l2_loss": 78.6240915298462,
+      "l1_loss": 274.0826930999756,
+      "l0": 6.4778857421875,
+      "frac_variance_explained": -8.00341603398323,
+      "cossim": 0.3754740992188454,
+      "l2_ratio": 1.6491711509227753,
+      "relative_reconstruction_bias": 8.075071120262146,
+      "loss_original": 2.151599160730839,
+      "loss_reconstructed": 18.244347710609436,
+      "loss_zero": 12.452933530807496,
+      "frac_recovered": -0.5657323953509331,
+      "frac_alive": 0.02691650390625,
+      "hyperparameters": {
+        "n_inputs": 200,
+        "context_length": 1024,
+        "l0": 20,
+        "layer": 20,
+        "width": "65k"
+      }
+    },
+    "l0_221": {
+      "l2_loss": 61.26867036819458,
+      "l1_loss": 394.06997283935544,
+      "l0": 30.2818212890625,
+      "frac_variance_explained": -0.004639597833156586,
+      "cossim": 0.47954541400074957,
+      "l2_ratio": 1.4224228554964065,
+      "relative_reconstruction_bias": 2.8707287490367888,
+      "loss_original": 2.151599160730839,
+      "loss_reconstructed": 10.630927562713623,
+      "loss_zero": 12.452933530807496,
+      "frac_recovered": 0.17530182713409886,
+      "frac_alive": 0.2276763916015625,
+      "hyperparameters": {
+        "n_inputs": 200,
+        "context_length": 1024,
+        "l0": 221,
+        "layer": 20,
+        "width": "65k"
+      }
+    },
+    "l0_34": {
+      "l2_loss": 77.58435577392578,
+      "l1_loss": 281.88170654296874,
+      "l0": 8.2050439453125,
+      "frac_variance_explained": -10.130443168580532,
+      "cossim": 0.41340469181537626,
+      "l2_ratio": 1.6560911977291106,
+      "relative_reconstruction_bias": 9.29422394156456,
+      "loss_original": 2.151599160730839,
+      "loss_reconstructed": 17.128004446029664,
+      "loss_zero": 12.452933530807496,
+      "frac_recovered": -0.4539519951120019,
+      "frac_alive": 0.065582275390625,
+      "hyperparameters": {
+        "n_inputs": 200,
+        "context_length": 1024,
+        "l0": 34,
+        "layer": 20,
+        "width": "65k"
+      }
+    },
+    "l0_61": {
+      "l2_loss": 77.927738571167,
+      "l1_loss": 314.41664611816407,
+      "l0": 14.6854248046875,
+      "frac_variance_explained": -7.959465856552124,
+      "cossim": 0.41553613662719724,
+      "l2_ratio": 1.6819834589958191,
+      "relative_reconstruction_bias": 7.942268486022949,
+      "loss_original": 2.151599160730839,
+      "loss_reconstructed": 15.694214601516723,
+      "loss_zero": 12.452933530807496,
+      "frac_recovered": -0.31723272004863245,
+      "frac_alive": 0.1244659423828125,
+      "hyperparameters": {
+        "n_inputs": 200,
+        "context_length": 1024,
+        "l0": 61,
+        "layer": 20,
+        "width": "65k"
+      }
+    }
+  }
