@@ -1,107 +1,107 @@
 {
-    "l0_114": {
-      "l2_loss": 68.20930728912353,
-      "l1_loss": 374.45026123046875,
-      "l0": 24.6984423828125,
-      "frac_variance_explained": -2.2435418608784676,
-      "cossim": 0.4158747929334641,
-      "l2_ratio": 1.4595944857597352,
-      "relative_reconstruction_bias": 4.643836954832077,
-      "loss_original": 1.8129132729768753,
-      "loss_reconstructed": 12.793615279197693,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": -0.03290830736410499,
-      "frac_alive": 0.07452392578125,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 114,
-        "layer": 20,
-        "width": "65k"
-      }
-    },
-    "l0_20": {
-      "l2_loss": 88.4343909072876,
-      "l1_loss": 342.6160373687744,
-      "l0": 9.5255615234375,
-      "frac_variance_explained": -15.603221232891082,
-      "cossim": 0.31473116055130956,
-      "l2_ratio": 1.6987564289569854,
-      "relative_reconstruction_bias": 10.630453836917876,
-      "loss_original": 1.8129132729768753,
-      "loss_reconstructed": 19.29553328037262,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": -0.6428600621223449,
-      "frac_alive": 0.0182647705078125,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 20,
-        "layer": 20,
-        "width": "65k"
-      }
-    },
-    "l0_221": {
-      "l2_loss": 62.841899185180665,
-      "l1_loss": 432.27764541625976,
-      "l0": 35.7116064453125,
-      "frac_variance_explained": -0.2254551813006401,
-      "cossim": 0.4525481873750687,
-      "l2_ratio": 1.422323927283287,
-      "relative_reconstruction_bias": 2.9426804530620574,
-      "loss_original": 1.8129132729768753,
-      "loss_reconstructed": 10.3528307056427,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.1970945684297476,
-      "frac_alive": 0.0965118408203125,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 221,
-        "layer": 20,
-        "width": "65k"
-      }
-    },
-    "l0_34": {
-      "l2_loss": 86.8627889251709,
-      "l1_loss": 361.7785482788086,
-      "l0": 12.926513671875,
-      "frac_variance_explained": -20.50645246505737,
-      "cossim": 0.36573791146278384,
-      "l2_ratio": 1.674913895726204,
-      "relative_reconstruction_bias": 13.03073462486267,
-      "loss_original": 1.8129132729768753,
-      "loss_reconstructed": 17.286253886222838,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": -0.4542160411179066,
-      "frac_alive": 0.03692626953125,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 34,
-        "layer": 20,
-        "width": "65k"
-      }
-    },
-    "l0_61": {
-      "l2_loss": 85.1004153060913,
-      "l1_loss": 391.73412826538083,
-      "l0": 20.7867578125,
-      "frac_variance_explained": -15.275270435512066,
-      "cossim": 0.3778162381052971,
-      "l2_ratio": 1.696569823026657,
-      "relative_reconstruction_bias": 10.414866313934326,
-      "loss_original": 1.8129132729768753,
-      "loss_reconstructed": 15.788153891563416,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": -0.3139542317390442,
-      "frac_alive": 0.06298828125,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 61,
-        "layer": 20,
-        "width": "65k"
-      }
+  "l0_114": {
+    "l2_loss": 111.37,
+    "l1_loss": 1452.08,
+    "l0": 119.38513919830322,
+    "frac_variance_explained": 0.81392578125,
+    "cossim": 0.9394921875,
+    "l2_ratio": 0.93626953125,
+    "relative_reconstruction_bias": 0.99830078125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 12.883231897354126,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.04144905324879801,
+    "frac_alive": 0.712493896484375,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 114,
+      "layer": 20,
+      "width": "65k"
+    }
+  },
+  "l0_20": {
+    "l2_loss": 141.6475,
+    "l1_loss": 675.28,
+    "l0": 21.512322492599488,
+    "frac_variance_explained": 0.70294921875,
+    "cossim": 0.90009765625,
+    "l2_ratio": 0.90830078125,
+    "relative_reconstruction_bias": 1.00970703125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 19.326485738754272,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.6467967706918717,
+    "frac_alive": 0.34332275390625,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 20,
+      "layer": 20,
+      "width": "65k"
+    }
+  },
+  "l0_221": {
+    "l2_loss": 98.8625,
+    "l1_loss": 2176.4,
+    "l0": 241.35627159118653,
+    "frac_variance_explained": 0.85279296875,
+    "cossim": 0.95255859375,
+    "l2_ratio": 0.95626953125,
+    "relative_reconstruction_bias": 1.00625,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 10.435519461631776,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": 0.18932656169814435,
+    "frac_alive": 0.8189544677734375,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 221,
+      "layer": 20,
+      "width": "65k"
+    }
+  },
+  "l0_34": {
+    "l2_loss": 132.0725,
+    "l1_loss": 839.56,
+    "l0": 36.373988513946536,
+    "frac_variance_explained": 0.74076171875,
+    "cossim": 0.91384765625,
+    "l2_ratio": 0.9123046875,
+    "relative_reconstruction_bias": 1.0003125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 17.273443312644957,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.45372665345668795,
+    "frac_alive": 0.42864990234375,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 34,
+      "layer": 20,
+      "width": "65k"
+    }
+  },
+  "l0_61": {
+    "l2_loss": 122.115,
+    "l1_loss": 1080.1,
+    "l0": 64.05273630142212,
+    "frac_variance_explained": 0.7773046875,
+    "cossim": 0.92654296875,
+    "l2_ratio": 0.9235546875,
+    "relative_reconstruction_bias": 0.99853515625,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 15.821720457077026,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.31762865591794254,
+    "frac_alive": 0.5617828369140625,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 61,
+      "layer": 20,
+      "width": "65k"
     }
   }
+}

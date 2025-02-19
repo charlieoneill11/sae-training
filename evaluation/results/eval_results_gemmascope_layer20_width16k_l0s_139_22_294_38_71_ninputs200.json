@@ -1,107 +1,107 @@
 {
-    "l0_139": {
-      "l2_loss": 148.585,
-      "l1_loss": 2728.04,
-      "l0": 183.4201708984375,
-      "frac_variance_explained": -0.40267578125,
-      "cossim": 0.92232421875,
-      "l2_ratio": 0.93435546875,
-      "relative_reconstruction_bias": 1.97640625,
-      "loss_original": 1.8141272115707396,
-      "loss_reconstructed": 2.10102525472641,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.9730078125,
-      "frac_alive": 0.9940185546875,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 139,
-        "layer": 20,
-        "width": "16k"
-      }
-    },
-    "l0_22": {
-      "l2_loss": 284.485,
-      "l1_loss": 2719.16,
-      "l0": 55.3458203125,
-      "frac_variance_explained": -31.495,
-      "cossim": 0.87486328125,
-      "l2_ratio": 0.91640625,
-      "relative_reconstruction_bias": 15.23140625,
-      "loss_original": 1.8141272115707396,
-      "loss_reconstructed": 2.4616863882541655,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.9390829825401306,
-      "frac_alive": 0.82476806640625,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 22,
-        "layer": 20,
-        "width": "16k"
-      }
-    },
-    "l0_294": {
-      "l2_loss": 130.0175,
-      "l1_loss": 3763.92,
-      "l0": 352.6443994140625,
-      "frac_variance_explained": -0.01845703125,
-      "cossim": 0.9406640625,
-      "l2_ratio": 0.94486328125,
-      "relative_reconstruction_bias": 1.71236328125,
-      "loss_original": 1.8141272115707396,
-      "loss_reconstructed": 2.0600193762779235,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.9768525409698486,
-      "frac_alive": 0.99761962890625,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 294,
-        "layer": 20,
-        "width": "16k"
-      }
-    },
-    "l0_38": {
-      "l2_loss": 251.58,
-      "l1_loss": 2645.76,
-      "l0": 73.9402734375,
-      "frac_variance_explained": -20.34841796875,
-      "cossim": 0.889765625,
-      "l2_ratio": 0.9233984375,
-      "relative_reconstruction_bias": 11.4728125,
-      "loss_original": 1.8141272115707396,
-      "loss_reconstructed": 2.3733639335632324,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.947366454899311,
-      "frac_alive": 0.89910888671875,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 38,
-        "layer": 20,
-        "width": "16k"
-      }
-    },
-    "l0_71": {
-      "l2_loss": 189.87,
-      "l1_loss": 2500.32,
-      "l0": 109.7097705078125,
-      "frac_variance_explained": -4.80037109375,
-      "cossim": 0.90638671875,
-      "l2_ratio": 0.92884765625,
-      "relative_reconstruction_bias": 4.6397265625,
-      "loss_original": 1.8141272115707396,
-      "loss_reconstructed": 2.1981925880908966,
-      "loss_zero": 12.452932243347169,
-      "frac_recovered": 0.9638544994592667,
-      "frac_alive": 0.96929931640625,
-      "hyperparameters": {
-        "n_inputs": 200,
-        "context_length": 1024,
-        "l0": 71,
-        "layer": 20,
-        "width": "16k"
-      }
+  "l0_139": {
+    "l2_loss": 123.5475,
+    "l1_loss": 1902.72,
+    "l0": 152.31977714538573,
+    "frac_variance_explained": 0.77224609375,
+    "cossim": 0.92501953125,
+    "l2_ratio": 0.92900390625,
+    "relative_reconstruction_bias": 1.006328125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 12.449653606414795,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.00019356705502104887,
+    "frac_alive": 0.97088623046875,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 139,
+      "layer": 20,
+      "width": "16k"
+    }
+  },
+  "l0_22": {
+    "l2_loss": 155.855,
+    "l1_loss": 714.56,
+    "l0": 22.6335298538208,
+    "frac_variance_explained": 0.6422265625,
+    "cossim": 0.87791015625,
+    "l2_ratio": 0.87556640625,
+    "relative_reconstruction_bias": 0.9981640625,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 16.330164771080018,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.36481779888272287,
+    "frac_alive": 0.587646484375,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 22,
+      "layer": 20,
+      "width": "16k"
+    }
+  },
+  "l0_294": {
+    "l2_loss": 108.59,
+    "l1_loss": 2780.0,
+    "l0": 313.53044342041017,
+    "frac_variance_explained": 0.8232421875,
+    "cossim": 0.94234375,
+    "l2_ratio": 0.9405859375,
+    "relative_reconstruction_bias": 0.99908203125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 10.458082027435303,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": 0.18684669436654075,
+    "frac_alive": 0.98577880859375,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 294,
+      "layer": 20,
+      "width": "16k"
+    }
+  },
+  "l0_38": {
+    "l2_loss": 146.0825,
+    "l1_loss": 926.78,
+    "l0": 40.16366771697998,
+    "frac_variance_explained": 0.68318359375,
+    "cossim": 0.89302734375,
+    "l2_ratio": 0.89048828125,
+    "relative_reconstruction_bias": 0.9982421875,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 15.481729621887206,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": -0.28511317539960146,
+    "frac_alive": 0.7164306640625,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 38,
+      "layer": 20,
+      "width": "16k"
+    }
+  },
+  "l0_71": {
+    "l2_loss": 135.1525,
+    "l1_loss": 1263.8,
+    "l0": 76.59480045318604,
+    "frac_variance_explained": 0.7276171875,
+    "cossim": 0.9093359375,
+    "l2_ratio": 0.91390625,
+    "relative_reconstruction_bias": 1.0070703125,
+    "loss_original": 1.8236626321077347,
+    "loss_reconstructed": 11.759795489311218,
+    "loss_zero": 12.452932348251343,
+    "frac_recovered": 0.06476316125248559,
+    "frac_alive": 0.8834228515625,
+    "hyperparameters": {
+      "n_inputs": 200,
+      "context_length": 1024,
+      "l0": 71,
+      "layer": 20,
+      "width": "16k"
     }
   }
+}
