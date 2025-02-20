@@ -1,77 +1,77 @@
-# import os
-# import json
-# import torch as t
-# from huggingface_hub import snapshot_download, login
-# from demo import eval_saes
-# import demo_config
-# import utils  # Ensure this contains load_dictionary
+import os
+import json
+import torch as t
+from huggingface_hub import snapshot_download, login
+from demo import eval_saes
+import demo_config
+import utils  # Ensure this contains load_dictionary
 
-# def main():
-#     # The Hugging Face repo ID where the trained SAEs were pushed.
-#     hf_repo_id = "charlieoneill/gemma-medicine-sae"
+def main():
+    # The Hugging Face repo ID where the trained SAEs were pushed.
+    hf_repo_id = "charlieoneill/gemma-medicine-sae"
 
-#     # Download the repository snapshot locally.
-#     print("Downloading repository from Hugging Face...")
-#     local_repo = snapshot_download(repo_id=hf_repo_id, repo_type="model")
-#     print(f"Repository downloaded to: {local_repo}")
+    # Download the repository snapshot locally.
+    print("Downloading repository from Hugging Face...")
+    local_repo = snapshot_download(repo_id=hf_repo_id, repo_type="model")
+    print(f"Repository downloaded to: {local_repo}")
 
-#     # Define the run folder that was used during training.
-#     # This should be "._run3_google_gemma-2-2b_jump_relu/resid_post_layer_20".
-#     run_folder = os.path.join(local_repo, "._run3_google_gemma-2-2b_jump_relu", "resid_post_layer_20")
-#     if not os.path.exists(run_folder):
-#         raise FileNotFoundError(f"Run folder not found: {run_folder}")
+    # Define the run folder that was used during training.
+    # This should be "._run3_google_gemma-2-2b_jump_relu/resid_post_layer_20".
+    run_folder = os.path.join(local_repo, "._run3_google_gemma-2-2b_jump_relu", "resid_post_layer_20")
+    if not os.path.exists(run_folder):
+        raise FileNotFoundError(f"Run folder not found: {run_folder}")
 
-#     # List all trainer folders (trainer_0 to trainer_5) within the run folder.
-#     trainer_folders = [
-#         os.path.join(run_folder, d)
-#         for d in os.listdir(run_folder)
-#         if d.startswith("trainer_") and os.path.isdir(os.path.join(run_folder, d))
-#     ]
-#     trainer_folders.sort()  # Ensure proper order
+    # List all trainer folders (trainer_0 to trainer_5) within the run folder.
+    trainer_folders = [
+        os.path.join(run_folder, d)
+        for d in os.listdir(run_folder)
+        if d.startswith("trainer_") and os.path.isdir(os.path.join(run_folder, d))
+    ]
+    trainer_folders.sort()  # Ensure proper order
 
-#     # Evaluation parameters.
-#     model_name = "google/gemma-2-2b"
-#     device = "cuda:0" if t.cuda.is_available() else "cpu"
-#     n_inputs = 200  # Adjust as needed
-#     overwrite_prev_results = True
+    # Evaluation parameters.
+    model_name = "google/gemma-2-2b"
+    device = "cuda:0" if t.cuda.is_available() else "cpu"
+    n_inputs = 200  # Adjust as needed
+    overwrite_prev_results = True
 
-#     combined_results = {}
+    combined_results = {}
 
-#     # Evaluate each SAE in the trainer folders.
-#     for trainer_path in trainer_folders:
-#         trainer_name = os.path.basename(trainer_path)
-#         print(f"Evaluating SAE in folder: {trainer_path}")
-#         eval_result = eval_saes(
-#             model_name=model_name,
-#             ae_paths=[trainer_path],
-#             n_inputs=n_inputs,
-#             device=device,
-#             overwrite_prev_results=overwrite_prev_results,
-#             transcoder=False,  # Set to True if you need to evaluate both input and output activations.
-#         )
-#         combined_results[trainer_name] = eval_result
-#         print(f"Results for {trainer_name}: {eval_result}\n")
+    # Evaluate each SAE in the trainer folders.
+    for trainer_path in trainer_folders:
+        trainer_name = os.path.basename(trainer_path)
+        print(f"Evaluating SAE in folder: {trainer_path}")
+        eval_result = eval_saes(
+            model_name=model_name,
+            ae_paths=[trainer_path],
+            n_inputs=n_inputs,
+            device=device,
+            overwrite_prev_results=overwrite_prev_results,
+            transcoder=False,  # Set to True if you need to evaluate both input and output activations.
+        )
+        combined_results[trainer_name] = eval_result
+        print(f"Results for {trainer_name}: {eval_result}\n")
     
-#     # Extract additional details (layer, SAE width) from one trainer's config.
-#     # We assume all trainers were run with the same settings.
-#     _, config = utils.load_dictionary(trainer_folders[0], device)
-#     layer = config["trainer"]["layer"]
-#     width = config["trainer"]["activation_dim"]
+    # Extract additional details (layer, SAE width) from one trainer's config.
+    # We assume all trainers were run with the same settings.
+    _, config = utils.load_dictionary(trainer_folders[0], device)
+    layer = config["trainer"]["layer"]
+    width = config["trainer"]["activation_dim"]
     
-#     # Round width to nearest 1000 and convert to k format
-#     width_rounded = round(width/1000)*1000
-#     width_k = f"{width_rounded//1000}k"
+    # Round width to nearest 1000 and convert to k format
+    width_rounded = round(width/1000)*1000
+    width_k = f"{width_rounded//1000}k"
 
-#     # Create an output filename that reflects the evaluation settings.
-#     output_filename = f"eval_results_layer{layer}_width{width_k}_ninputs{n_inputs}.json"
-#     with open(output_filename, "w") as f:
-#         json.dump(combined_results, f, indent=2)
-#     print(f"Combined evaluation results saved to {output_filename}")
+    # Create an output filename that reflects the evaluation settings.
+    output_filename = f"eval_results_layer{layer}_width{width_k}_ninputs{n_inputs}.json"
+    with open(output_filename, "w") as f:
+        json.dump(combined_results, f, indent=2)
+    print(f"Combined evaluation results saved to {output_filename}")
 
-# if __name__ == "__main__":
-#     HF_TOKEN = "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"  # Replace with your token.
-#     login(token=HF_TOKEN)
-#     main()
+if __name__ == "__main__":
+    HF_TOKEN = "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"  # Replace with your token.
+    login(token=HF_TOKEN)
+    main()
 
 import os
 import json
@@ -195,7 +195,7 @@ def evaluate_individual(sae, model, submodule, activation_buffer, context_length
             submodule,
             sae,
             max_len=context_length,
-            normalize_batch=True,
+            normalize_batch=False,
             io="out"
         )
         frac_recov = (lr_recon - lr_zero) / (lr_orig - lr_zero)
@@ -233,9 +233,9 @@ def main():
     dtype = demo_config.LLM_CONFIG[model_name].dtype
 
     # The list of L0 values we want to evaluate.
-    l0_values = [11, 138, 20, 310, 36, 408, 58, 68]
+    l0_values = [11, 344, 57]
     layer = 20
-    width = "16k"
+    width = "32k"
     hf_repo_id = f"google/gemma-scope-{model_size}-pt-res"  # Repository with gemma‑scope SAEs.
 
     # Create the language model (LLM) and get the appropriate submodule.
