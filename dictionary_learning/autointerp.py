@@ -10,7 +10,7 @@ Requirements:
 - einops
 - numpy
 - yaml
-- transformer_lens
+- nnsight
 - datasets
 - tqdm
 - openai
@@ -18,20 +18,23 @@ Requirements:
 """
 
 import torch
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download, login
 import einops
 import numpy as np
 import yaml
 from tqdm.auto import tqdm
-from transformer_lens import HookedTransformer
+from nnsight import LanguageModel  # <-- Changed: use nnsight instead of transformer_lens
 from datasets import load_dataset
 from openai import OpenAI, AzureOpenAI
 import re
 import html
 import os
-from huggingface_hub import snapshot_download
+import gc
+import json
+import random
+from itertools import cycle
 
-from utils import load_dictionary
+from utils import load_dictionary, get_submodule  # Assumes get_submodule(model, layer) is defined
 
 # ----------------------------- Configuration -----------------------------
 
@@ -49,22 +52,28 @@ BOTTOM_K = 10  # Number of bottom boosted logits
 # OpenAI Configuration
 CONFIG_PATH = "config.yaml"  # Path to your config file containing API keys
 
+# Define tracer kwargs for nnsight (as in the provided snippet)
+DEBUG = False
+tracer_kwargs = {'scan': True, 'validate': True} if DEBUG else {'scan': False, 'validate': False}
+
 # ----------------------------- Helper Functions -----------------------------
 
 def load_sparse_autoencoder(ae_path: str, device: str = 'cuda:0', dtype: torch.dtype = torch.float32):
-     dictionary, config = load_dictionary(ae_path, device)
-     dictionary = dictionary.to(dtype=dtype)
-     return dictionary, config
+    dictionary, config = load_dictionary(ae_path, device)
+    dictionary = dictionary.to(dtype=dtype)
+    return dictionary, config
     
-def load_transformer_model(model_name: str = 'gpt2-small', device: str = 'cuda:0', dtype: torch.dtype = torch.float32) -> HookedTransformer:
-    model = HookedTransformer.from_pretrained(model_name, device=device, dtype=dtype)
+def load_transformer_model(model_name: str = 'google/gemma-2-2b', device: str = 'cuda:0', dtype: torch.dtype = torch.float32) -> LanguageModel:
+    # Create an nnsight LanguageModel instance instead of a HookedTransformer.
+    model = LanguageModel(model_name, dispatch=True, device_map=device)
+    model = model.to(dtype=dtype)
     return model
 
 def load_scores(scores_path: str) -> np.ndarray:
     scores = np.load(scores_path)
     return scores
 
-def load_tokenized_data(max_length: int = 128, batch_size: int = 64, take_size: int = 102400) -> torch.Tensor:
+def load_tokenized_data(max_length: int = 256, batch_size: int = 64, take_size: int = 102400) -> torch.Tensor:
     def tokenize_and_concatenate(
         dataset,
         tokenizer,
@@ -119,25 +128,40 @@ def load_tokenized_data(max_length: int = 128, batch_size: int = 64, take_size: 
     owt_tokens_torch = torch.tensor(owt_tokens)
     return owt_tokens_torch
 
-def compute_scores(sae, transformer_model: HookedTransformer, owt_tokens_torch: torch.Tensor, layer: int, feature_indices: list, device: str = 'cpu') -> np.ndarray:
+def compute_scores(sae, transformer_model: LanguageModel, owt_tokens_torch: torch.Tensor, layer: int, feature_indices: list, device: str = 'cuda:0') -> np.ndarray:
     sae.eval()
 
-    # Compute scores
     scores = []
-    batch_size = 64
+    batch_size = 16
+    max_length = owt_tokens_torch.shape[1]
     for i in tqdm(range(0, owt_tokens_torch.shape[0], batch_size), desc="Computing scores"):
         with torch.no_grad():
-            _, cache = transformer_model.run_with_cache(
-                owt_tokens_torch[i : i + batch_size],
-                stop_at_layer=layer + 1,
-                names_filter=None,
-            )
-            X = cache["resid_pre", layer].cpu()  # Shape: (batch, pos, d_model)
-            X = einops.rearrange(X, "batch pos d_model -> (batch pos) d_model")
-            del cache
+            # Convert tokenized inputs (tensor) back to text
+            texts = [transformer_model.tokenizer.decode(tokens, skip_special_tokens=True) 
+                     for tokens in owt_tokens_torch[i : i + batch_size]]
+            # batch = owt_tokens_torch[i : i + batch_size]
+            # Get the submodule corresponding to the desired layer (using a helper from utils)
+            submodule = get_submodule(transformer_model, layer)
+            # Use nnsight’s trace method to capture activations from the submodule
+            with transformer_model.trace(texts, **tracer_kwargs):
+                x = submodule.output.save()  # Shape: (batch, pos, d_model)
+            x = x.value
+            if isinstance(x, tuple):
+                x = x[0]
+            # Remove the BOS token
+            if x.shape[1] > max_length:
+                x = x[:, 1:max_length+1, :]
+            X = einops.rearrange(x, "batch pos d_model -> (batch pos) d_model")
             cur_scores = sae.encode(X)[:, feature_indices]
-            cur_scores_reshaped = einops.rearrange(cur_scores, "(b pos) n -> b n pos", pos=owt_tokens_torch.shape[1]).cpu().numpy().astype(np.float16)
-            scores.append(cur_scores_reshaped)
+            x_hat, f = sae(x, output_features=True)
+            l2_loss = torch.linalg.norm(x - x_hat, dim=-1).mean()
+            total_variance = torch.var(x, dim=0).sum()
+            residual_variance = torch.var(x - x_hat, dim=0).sum()
+            frac_variance_explained = (1 - residual_variance / total_variance)
+            l0 = (f != 0).float().sum(dim=-1).mean()
+            print(f"L2 loss: {l2_loss}, L0 loss: {l0}, Fraction of variance explained: {frac_variance_explained}")
+            cur_scores_reshaped = einops.rearrange(cur_scores, "(b pos) n -> b n pos", pos=owt_tokens_torch.shape[1])
+            scores.append(cur_scores_reshaped.cpu().numpy().astype(np.float16))
 
     scores = np.concatenate(scores, axis=0)
     np.save(SCORES_PATH, scores)
@@ -145,16 +169,16 @@ def compute_scores(sae, transformer_model: HookedTransformer, owt_tokens_torch: 
 
 def get_top_k_indices(scores: np.ndarray, feature_index: int, k: int = TOP_K) -> np.ndarray:
     """ 
-    Get the indices of the examples where the feature activates the most
-    scores is shape (batch, feature, pos), so we index with feature_index
+    Get the indices of the examples where the feature activates the most.
+    scores is shape (batch, feature, pos), so we index with feature_index.
     """
     feature_scores = scores[:, feature_index, :]
     top_k_indices = feature_scores.argsort()[-k:][::-1]
     return top_k_indices
 
-def get_topk_bottomk_logits(feature_index: int, sae, transformer_model: HookedTransformer, k: int = TOP_K) -> tuple:
+def get_topk_bottomk_logits(feature_index: int, sae, transformer_model: LanguageModel, k: int = TOP_K) -> tuple:
     feature_vector = sae.decoder.weight.data[:, feature_index]
-    W_U = transformer_model.W_U  # (d_model, vocab)
+    W_U = transformer_model.W_U  # Assuming the nnsight LanguageModel exposes this attribute
     logits = einops.einsum(W_U, feature_vector, "d_model vocab, d_model -> vocab")
     top_k_logits = logits.topk(k).indices
     bottom_k_logits = logits.topk(k, largest=False).indices
@@ -217,19 +241,11 @@ def highlight_scores_in_html(token_strs: list, scores: list, seq_idx: int, max_c
     return head + tokens_html, convert_clean_text(clean_text)
 
 def convert_clean_text(clean_text: str, k: int = 1, tokens_left: int = 30, tokens_right: int = 5) -> str:
-    # Split the clean text on the "|" separator
     token_score_pairs = clean_text.split(" | ")
-
-    # Remove the first token if present
     if token_score_pairs:
         token_score_pairs = token_score_pairs[1:]
-
-    # Initialize a list to hold tuples of (token, score)
     tokens_with_scores = []
-
-    # Define regex to capture tokens with scores
     token_score_pattern = re.compile(r"^(.+?) \((\d+\.\d+)\)$")
-
     for token_score in token_score_pairs:
         match = token_score_pattern.match(token_score.strip())
         if match:
@@ -237,27 +253,16 @@ def convert_clean_text(clean_text: str, k: int = 1, tokens_left: int = 30, token
             score = float(match.group(2))
             tokens_with_scores.append((token, score))
         else:
-            # Handle cases where score is zero or absent
             token = token_score.split(' (')[0].strip()
             tokens_with_scores.append((token, 0.0))
-
-    # Sort tokens by score in descending order
     sorted_tokens = sorted(tokens_with_scores, key=lambda x: x[1], reverse=True)
-
-    # Select top k tokens with non-zero scores
     top_k_tokens = [token for token, score in sorted_tokens if score > 0][:k]
-
-    # Find all indices of top k tokens
-    top_k_indices = [i for i, (token, score) in enumerate(tokens_with_scores) if token in top_k_tokens and score >0]
-
-    # Define windows around each top token
+    top_k_indices = [i for i, (token, score) in enumerate(tokens_with_scores) if token in top_k_tokens and score > 0]
     windows = []
     for idx in top_k_indices:
         start = max(0, idx - tokens_left)
         end = min(len(tokens_with_scores) - 1, idx + tokens_right)
         windows.append((start, end))
-
-    # Merge overlapping windows
     merged_windows = []
     for window in sorted(windows, key=lambda x: x[0]):
         if not merged_windows:
@@ -266,46 +271,39 @@ def convert_clean_text(clean_text: str, k: int = 1, tokens_left: int = 30, token
             last_start, last_end = merged_windows[-1]
             current_start, current_end = window
             if current_start <= last_end + 1:
-                # Overlapping or adjacent windows, merge them
                 merged_windows[-1] = (last_start, max(last_end, current_end))
             else:
                 merged_windows.append(window)
-
-    # Collect all unique indices within the merged windows
     selected_indices = set()
     for start, end in merged_windows:
         selected_indices.update(range(start, end + 1))
-
-    # Create the converted tokens list with wrapping
     converted_tokens = []
     for i, (token, score) in enumerate(tokens_with_scores):
         if i in selected_indices:
             if token in top_k_tokens and score > 0:
                 token = f"<<{token}>>"
             converted_tokens.append(token)
-        # Else, skip tokens outside the selected windows
-
-    # Join the converted tokens into a single string
     converted_text = " ".join(converted_tokens)
     return converted_text
-
 
 
 """
 Main function to execute the analysis for all defined feature indices.
 """
-# Load configuration
-# config = yaml.safe_load(open(CONFIG_PATH))
+torch.set_grad_enabled(False)
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+HF_TOKEN = "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"  # Replace with your token.
+login(token=HF_TOKEN)
 
 # The Hugging Face repo ID where the trained SAEs were pushed.
 hf_repo_id = "charlieoneill/gemma-medicine-sae"
 
-# Download the repository snapshot locally.
 print("Downloading repository from Hugging Face...")
 local_repo = snapshot_download(repo_id=hf_repo_id, repo_type="model")
 print(f"Repository downloaded to: {local_repo}")
 
-# Define the run folder that was used during training. ._run3_google_gemma-2-9b_width16384_jump_relu
+# Define the run folder that was used during training.
 run_folder = os.path.join(local_repo, "._run3_google_gemma-2-2b_jump_relu", "resid_post_layer_20")
 if not os.path.exists(run_folder):
     raise FileNotFoundError(f"Run folder not found: {run_folder}")
@@ -319,18 +317,32 @@ trainer_folders = [
 trainer_folders.sort()  # Ensure proper order
 
 # Load models
-sae = load_sparse_autoencoder(trainer_folders[0], device='cuda:0', dtype=torch.float32)
-transformer_model = load_transformer_model(model_name='gemma-2-2b', device='cuda:0', dtype=torch.float32)
+sae, config = load_sparse_autoencoder(trainer_folders[0], device='cuda:0', dtype=torch.float32)
+transformer_model = load_transformer_model(model_name='google/gemma-2-2b', device='cuda:0', dtype=torch.float32)
 
 # Load or compute scores
 try:
     scores = load_scores(SCORES_PATH)
 except FileNotFoundError:
     print(f"Scores file not found at {SCORES_PATH}. Computing scores...")
-    owt_tokens_torch = load_tokenized_data()
+    owt_tokens_torch = load_tokenized_data(take_size=10_000)
     layer = 20
     device = 'cuda:0'
     scores = compute_scores(sae, transformer_model, owt_tokens_torch, layer, FEATURE_INDICES, device=device)
 
-# # Load tokenized data
-# owt_tokens_torch = load_tokenized_data()
+# Load tokenized data
+owt_tokens_torch = load_tokenized_data(take_size=10_000)
+
+# 1) Count number of non-zero entries
+nonzero_count = np.count_nonzero(scores)
+
+# 2) Number of features with any non-zero activation
+features_nonzero = np.sum((scores != 0).any(axis=(0, 2)))
+
+# 3) Mean number of examples an activating feature activates on
+examples_per_feature = np.sum((scores != 0).any(axis=2), axis=0)
+mean_examples = np.mean(examples_per_feature[examples_per_feature > 0])
+
+print("Number of non-zero entries:", nonzero_count)
+print("Number of features with non-zero activations:", features_nonzero)
+print("Mean number of examples an activating feature activates on:", mean_examples)
