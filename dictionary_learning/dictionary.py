@@ -39,6 +39,143 @@ class Dictionary(ABC, nn.Module):
         """
         pass
 
+class JumpReluAutoEncoder(Dictionary, nn.Module):
+    """
+    An autoencoder with jump ReLUs.
+    """
+
+    def __init__(self, activation_dim, dict_size, device="cpu"):
+        super().__init__()
+        self.activation_dim = activation_dim
+        self.dict_size = dict_size
+        self.W_enc = nn.Parameter(t.empty(activation_dim, dict_size, device=device))
+        self.b_enc = nn.Parameter(t.zeros(dict_size, device=device))
+        self.W_dec = nn.Parameter(
+            t.nn.init.kaiming_uniform_(t.empty(dict_size, activation_dim, device=device))
+        )
+        self.b_dec = nn.Parameter(t.zeros(activation_dim, device=device))
+        self.threshold = nn.Parameter(t.ones(dict_size, device=device) * 0.001)  # Appendix I
+
+        self.apply_b_dec_to_input = False
+
+        self.W_dec.data = self.W_dec / self.W_dec.norm(dim=1, keepdim=True)
+        self.W_enc.data = self.W_dec.data.clone().T
+
+    def encode(self, x, output_pre_jump=False):
+        if self.apply_b_dec_to_input:
+            x = x - self.b_dec
+        pre_jump = x @ self.W_enc + self.b_enc
+
+        f = nn.ReLU()(pre_jump * (pre_jump > self.threshold))
+
+        if output_pre_jump:
+            return f, pre_jump
+        else:
+            return f
+
+    def decode(self, f):
+        return f @ self.W_dec + self.b_dec
+
+    def forward(self, x, output_features=False):
+        """
+        Forward pass of an autoencoder.
+        x : activations to be autoencoded
+        output_features : if True, return the encoded features (and their pre-jump version) as well as the decoded x
+        """
+        f = self.encode(x)
+        x_hat = self.decode(f)
+        if output_features:
+            return x_hat, f
+        else:
+            return x_hat
+
+    def scale_biases(self, scale: float):
+        self.b_dec.data *= scale
+        self.b_enc.data *= scale
+        self.threshold.data *= scale
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        path: str | None = None,
+        load_from_sae_lens: bool = False,
+        dtype: t.dtype = t.float32,
+        device: t.device | None = None,
+        **kwargs,
+    ):
+        """
+        Load a pretrained autoencoder from a file.
+        If sae_lens=True, then pass **kwargs to sae_lens's
+        loading function.
+        """
+        if not load_from_sae_lens:
+            state_dict = t.load(path)
+            activation_dim, dict_size = state_dict["W_enc"].shape
+            autoencoder = JumpReluAutoEncoder(activation_dim, dict_size)
+            autoencoder.load_state_dict(state_dict)
+            autoencoder = autoencoder.to(dtype=dtype, device=device)
+        else:
+            from sae_lens import SAE
+
+            sae, cfg_dict, _ = SAE.from_pretrained(**kwargs)
+            assert (
+                cfg_dict["finetuning_scaling_factor"] == False
+            ), "Finetuning scaling factor not supported"
+            dict_size, activation_dim = cfg_dict["d_sae"], cfg_dict["d_in"]
+            autoencoder = JumpReluAutoEncoder(activation_dim, dict_size, device=device)
+            autoencoder.load_state_dict(sae.state_dict())
+            autoencoder.apply_b_dec_to_input = cfg_dict["apply_b_dec_to_input"]
+
+        if device is not None:
+            device = autoencoder.W_enc.device
+        return autoencoder.to(dtype=dtype, device=device)
+    
+    @classmethod
+    def from_npz(cls, hf_repo_id: str, layer: int, width: str, l0: int,
+                dtype: t.dtype = t.float32, device: t.device = None):
+        """
+        Loads a gemma‑scope SAE directly from an npz file stored on HF.
+        This bypasses the usual __init__ normalization.
+        """
+        from huggingface_hub import hf_hub_download
+        import numpy as np
+
+        # Construct the file path (e.g., "layer_20/width_16k/average_l0_139/params.npz")
+        filename = f"average_l0_{l0}/params.npz"
+        hf_path = f"layer_{layer}/width_{width}/{filename}"
+        
+        # Download the file.
+        params_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_path, force_download=False)
+        print(f"Downloading params for L0={l0} from {hf_path}")
+        
+        # Load the parameters.
+        params = np.load(params_path)
+        state_dict = {k: t.from_numpy(v) for k, v in params.items()}
+        
+        # Print stats for debugging.
+        for key, tensor in state_dict.items():
+            print(f"{key}: shape={tensor.shape}, min={tensor.min()}, max={tensor.max()}, nan={t.isnan(tensor).any()}")
+        
+        # Determine activation_dim and dict_size from W_enc.
+        activation_dim, dict_size = state_dict["W_enc"].shape
+        
+        # Create a new instance without calling __init__, then call Module.__init__
+        self = cls.__new__(cls)
+        t.nn.Module.__init__(self)  # <-- This call is required!
+        
+        self.activation_dim = activation_dim
+        self.dict_size = dict_size
+        self.apply_b_dec_to_input = False
+
+        # Directly set the parameters.
+        self.W_enc = t.nn.Parameter(state_dict["W_enc"].to(device).to(dtype))
+        self.b_enc = t.nn.Parameter(state_dict["b_enc"].to(device).to(dtype))
+        self.W_dec = t.nn.Parameter(state_dict["W_dec"].to(device).to(dtype))
+        self.b_dec = t.nn.Parameter(state_dict["b_dec"].to(device).to(dtype))
+        self.threshold = t.nn.Parameter(state_dict["threshold"].to(device).to(dtype))
+        
+        return self
+
 
 class AutoEncoder(Dictionary, nn.Module):
     """
@@ -272,144 +409,6 @@ class GatedAutoEncoder(Dictionary, nn.Module):
         if device is not None:
             autoencoder.to(device)
         return autoencoder
-
-
-class JumpReluAutoEncoder(Dictionary, nn.Module):
-    """
-    An autoencoder with jump ReLUs.
-    """
-
-    def __init__(self, activation_dim, dict_size, device="cpu"):
-        super().__init__()
-        self.activation_dim = activation_dim
-        self.dict_size = dict_size
-        self.W_enc = nn.Parameter(t.empty(activation_dim, dict_size, device=device))
-        self.b_enc = nn.Parameter(t.zeros(dict_size, device=device))
-        self.W_dec = nn.Parameter(
-            t.nn.init.kaiming_uniform_(t.empty(dict_size, activation_dim, device=device))
-        )
-        self.b_dec = nn.Parameter(t.zeros(activation_dim, device=device))
-        self.threshold = nn.Parameter(t.ones(dict_size, device=device) * 0.001)  # Appendix I
-
-        self.apply_b_dec_to_input = False
-
-        self.W_dec.data = self.W_dec / self.W_dec.norm(dim=1, keepdim=True)
-        self.W_enc.data = self.W_dec.data.clone().T
-
-    def encode(self, x, output_pre_jump=False):
-        if self.apply_b_dec_to_input:
-            x = x - self.b_dec
-        pre_jump = x @ self.W_enc + self.b_enc
-
-        f = nn.ReLU()(pre_jump * (pre_jump > self.threshold))
-
-        if output_pre_jump:
-            return f, pre_jump
-        else:
-            return f
-
-    def decode(self, f):
-        return f @ self.W_dec + self.b_dec
-
-    def forward(self, x, output_features=False):
-        """
-        Forward pass of an autoencoder.
-        x : activations to be autoencoded
-        output_features : if True, return the encoded features (and their pre-jump version) as well as the decoded x
-        """
-        f = self.encode(x)
-        x_hat = self.decode(f)
-        if output_features:
-            return x_hat, f
-        else:
-            return x_hat
-
-    def scale_biases(self, scale: float):
-        self.b_dec.data *= scale
-        self.b_enc.data *= scale
-        self.threshold.data *= scale
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        path: str | None = None,
-        load_from_sae_lens: bool = False,
-        dtype: t.dtype = t.float32,
-        device: t.device | None = None,
-        **kwargs,
-    ):
-        """
-        Load a pretrained autoencoder from a file.
-        If sae_lens=True, then pass **kwargs to sae_lens's
-        loading function.
-        """
-        if not load_from_sae_lens:
-            state_dict = t.load(path)
-            activation_dim, dict_size = state_dict["W_enc"].shape
-            autoencoder = JumpReluAutoEncoder(activation_dim, dict_size)
-            autoencoder.load_state_dict(state_dict)
-            autoencoder = autoencoder.to(dtype=dtype, device=device)
-        else:
-            from sae_lens import SAE
-
-            sae, cfg_dict, _ = SAE.from_pretrained(**kwargs)
-            assert (
-                cfg_dict["finetuning_scaling_factor"] == False
-            ), "Finetuning scaling factor not supported"
-            dict_size, activation_dim = cfg_dict["d_sae"], cfg_dict["d_in"]
-            autoencoder = JumpReluAutoEncoder(activation_dim, dict_size, device=device)
-            autoencoder.load_state_dict(sae.state_dict())
-            autoencoder.apply_b_dec_to_input = cfg_dict["apply_b_dec_to_input"]
-
-        if device is not None:
-            device = autoencoder.W_enc.device
-        return autoencoder.to(dtype=dtype, device=device)
-    
-    @classmethod
-    def from_npz(cls, hf_repo_id: str, layer: int, width: str, l0: int,
-                dtype: t.dtype = t.float32, device: t.device = None):
-        """
-        Loads a gemma‑scope SAE directly from an npz file stored on HF.
-        This bypasses the usual __init__ normalization.
-        """
-        from huggingface_hub import hf_hub_download
-        import numpy as np
-
-        # Construct the file path (e.g., "layer_20/width_16k/average_l0_139/params.npz")
-        filename = f"average_l0_{l0}/params.npz"
-        hf_path = f"layer_{layer}/width_{width}/{filename}"
-        
-        # Download the file.
-        params_path = hf_hub_download(repo_id=hf_repo_id, filename=hf_path, force_download=False)
-        print(f"Downloading params for L0={l0} from {hf_path}")
-        
-        # Load the parameters.
-        params = np.load(params_path)
-        state_dict = {k: t.from_numpy(v) for k, v in params.items()}
-        
-        # Print stats for debugging.
-        for key, tensor in state_dict.items():
-            print(f"{key}: shape={tensor.shape}, min={tensor.min()}, max={tensor.max()}, nan={t.isnan(tensor).any()}")
-        
-        # Determine activation_dim and dict_size from W_enc.
-        activation_dim, dict_size = state_dict["W_enc"].shape
-        
-        # Create a new instance without calling __init__, then call Module.__init__
-        self = cls.__new__(cls)
-        t.nn.Module.__init__(self)  # <-- This call is required!
-        
-        self.activation_dim = activation_dim
-        self.dict_size = dict_size
-        self.apply_b_dec_to_input = False
-
-        # Directly set the parameters.
-        self.W_enc = t.nn.Parameter(state_dict["W_enc"].to(device).to(dtype))
-        self.b_enc = t.nn.Parameter(state_dict["b_enc"].to(device).to(dtype))
-        self.W_dec = t.nn.Parameter(state_dict["W_dec"].to(device).to(dtype))
-        self.b_dec = t.nn.Parameter(state_dict["b_dec"].to(device).to(dtype))
-        self.threshold = t.nn.Parameter(state_dict["threshold"].to(device).to(dtype))
-        
-        return self
 
 
 # TODO merge this with AutoEncoder
